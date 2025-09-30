@@ -262,4 +262,17 @@ export class AiderSessionManager {
             vscode.window.setStatusBarMessage(`All files staged to be dropped. Press Sync to apply.`, 4000);
         }
     }
+
+    public sendCommand(command: string) {
+        if (!this._terminal) {
+            vscode.window.showWarningMessage("Aider session not active.");
+            return;
+        }
+        this._terminal.sendText(command);
+        this._terminal.show(); // Bring terminal to the front
+    }
+
+    public isSessionActive(): boolean {
+        return !!this._terminal;
+    }
 }

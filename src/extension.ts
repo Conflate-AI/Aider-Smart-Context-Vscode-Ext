@@ -2,10 +2,17 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 import ignore from 'ignore';
 import { AiderSessionManager } from './AiderSessionManager';
 import { AiderContextViewProvider, ContextFileItem } from './AiderContextViewProvider';
 
+
+interface AiderTask {
+	label: string;
+	description: string;
+	command: string;
+}
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -169,7 +176,60 @@ export function activate(context: vscode.ExtensionContext) {
 		sessionManager.syncContext();
 	});
 
-	context.subscriptions.push(startCommand, stopCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile, syncContextCommand);
+	let runCustomTaskCommand = vscode.commands.registerCommand('aider.runCustomTask', async () => {
+		const sessionManager = AiderSessionManager.getInstance();
+		if (!sessionManager.isSessionActive()) {
+			vscode.window.showWarningMessage('Aider session is not active. Please start a session first.');
+			return;
+		}
+
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			vscode.window.showErrorMessage('No workspace folder is open.');
+			return;
+		}
+
+		const tasksUri = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'aider-tasks.json');
+
+		try {
+			const fileContent = await vscode.workspace.fs.readFile(tasksUri);
+			const tasks = JSON.parse(Buffer.from(fileContent).toString('utf8')) as AiderTask[];
+
+			if (!Array.isArray(tasks) || tasks.length === 0) {
+				vscode.window.showErrorMessage('No tasks found or `aider-tasks.json` is not a valid array.');
+				return;
+			}
+
+			const selectedTask = await vscode.window.showQuickPick(tasks, {
+				placeHolder: 'Select a custom Aider task to run',
+				title: 'Aider Custom Tasks'
+			});
+
+			if (selectedTask) {
+				sessionManager.sendCommand(selectedTask.command);
+			}
+
+		} catch (error) {
+			// Handle file not found specifically
+			if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+				const createOption = 'Create aider-tasks.json';
+				vscode.window.showInformationMessage(
+					'No `.vscode/aider-tasks.json` file found in this workspace.',
+					createOption
+				).then(selection => {
+					if (selection === createOption) {
+						const exampleContent = '[\n  {\n    "label": "🧪 My First Task",\n    "description": "A description for my task.",\n    "command": "This is the prompt to send to aider."\n  }\n]';
+						fs.writeFileSync(tasksUri.fsPath, exampleContent);
+						vscode.workspace.openTextDocument(tasksUri).then(doc => vscode.window.showTextDocument(doc));
+					}
+				});
+			} else {
+				vscode.window.showErrorMessage(`Error reading or parsing aider-tasks.json: ${error}`);
+			}
+		}
+	});
+
+	context.subscriptions.push(startCommand, stopCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile, syncContextCommand, runCustomTaskCommand);
 }
 
 

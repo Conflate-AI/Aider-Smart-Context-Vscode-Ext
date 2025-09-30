@@ -3,7 +3,7 @@
   "displayName": "Aider Smart Context",
   "description": "Integrates Aider by automatically managing the chat context based on open and closed files.",
   "publisher": "Conflate-AI",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "license": "MIT",
   "icon": "resources/asc_logo.png",
   "repository": {
@@ -68,6 +68,12 @@
           "when": "view == aider-context-view && aider.sessionActive && aider.contextIsDirty",
           "group": "navigation@3",
           "icon": "$(sync-ignored)"
+        },
+        {
+          "command": "aider.runCustomTask",
+          "when": "view == aider-context-view && aider.sessionActive",
+          "group": "navigation@4",
+          "icon": "$(beaker)"
         }
       ],
       "view/item/context": [
@@ -122,7 +128,8 @@
       {
         "command": "aider.dropFileFromContext",
         "title": "Aider: Drop File from Context",
-        "category": "Aider"
+        "category": "Aider",
+        "icon": "$(discard)"
       },
       {
         "command": "aider.addFileFromExplorer",
@@ -136,6 +143,12 @@
         "command": "aider.syncContext",
         "title": "Aider: Sync Context",
         "icon": "$(sync)"
+      },
+      {
+        "command": "aider.runCustomTask",
+        "title": "Aider: Run Custom Task...",
+        "category": "Aider",
+        "icon": "$(beaker)"
       }
     ],
     "configuration": {
