@@ -15,10 +15,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:aider.start",
-    "onView:aider-context-view"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -40,6 +37,14 @@
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "aider.dropAllFiles",
+          "when": "view == aider-context-view",
+          "group": "navigation",
+          "icon": "$(clear-all)"
+        }
+      ],
       "view/item/context": [
         {
           "command": "aider.dropFileFromContext",

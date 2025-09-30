@@ -8,6 +8,7 @@ export class AiderSessionManager {
     private _contextFiles: Map<string, { readOnly: boolean }> = new Map();
     private _statusBarItem: vscode.StatusBarItem;
     private _viewProvider: AiderContextViewProvider | undefined;
+    private _sessionDisposables: vscode.Disposable[] = [];
 
     private constructor() {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -52,19 +53,71 @@ export class AiderSessionManager {
         const config = vscode.workspace.getConfiguration('aider');
         const executablePath = config.get<string>('executablePath', 'aider');
         this._terminal = vscode.window.createTerminal(`Aider`);
-        this._terminal.sendText('aider');
+        this._terminal.sendText(executablePath);
         this._terminal.show();
         this.updateStatusBar();
+
+        this.registerSessionListeners();
 
         // Listen for the terminal being closed by the user
         vscode.window.onDidCloseTerminal(closedTerminal => {
             if (closedTerminal === this._terminal) {
-                vscode.window.showInformationMessage('Aider session terminated.');
-                this._terminal = undefined;
-                this._contextFiles.clear();
-                this.updateStatusBar();
+                this.endSession(); // Call a dedicated cleanup method
             }
         });
+
+        if (config.get<boolean>('autoAddOnOpen')) {
+            const openFiles = vscode.workspace.textDocuments
+                .filter(doc => !doc.isUntitled && doc.uri.scheme === 'file')
+                .map(doc => doc.uri.fsPath);
+
+            if (openFiles.length > 0) {
+                this.addFiles(openFiles);
+            }
+        }
+    }
+
+    private registerSessionListeners() {
+        // Listener for opening files
+        const onDidChangeActiveEditor = vscode.window.onDidChangeActiveTextEditor(editor => {
+            // This event fires with `undefined` when you focus away from an editor
+            if (editor) {
+                const document = editor.document;
+                if (document.isUntitled || document.uri.scheme !== 'file' || !this._terminal) return;
+
+                // Now that we're using a more direct event, we don't need the complex 'isDocumentVisible' check.
+                const config = vscode.workspace.getConfiguration('aider');
+                if (config.get<boolean>('autoAddOnOpen')) {
+                    this.addFile(document.uri.fsPath);
+                }
+            }
+        });
+
+        // Listener for closing files
+        const onCloseFile = vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
+            if (document.isUntitled || document.uri.scheme !== 'file' || !this._terminal) return;
+            const config = vscode.workspace.getConfiguration('aider');
+            if (config.get<boolean>('autoDropOnClose')) {
+                this.dropFile(document.uri.fsPath);
+            }
+        });
+
+        this._sessionDisposables.push(onDidChangeActiveEditor, onCloseFile);
+    }
+
+    private endSession() {
+        vscode.window.showInformationMessage('Aider session terminated.');
+        this._terminal = undefined;
+        this._contextFiles.clear();
+
+        // --- NEW: Dispose of listeners to prevent memory leaks ---
+        this._sessionDisposables.forEach(d => d.dispose());
+        this._sessionDisposables = [];
+
+        this.updateStatusBar();
+        if (this._viewProvider) {
+            this._viewProvider.refresh();
+        }
     }
 
     public addFile(filePath: string) {

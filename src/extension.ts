@@ -12,11 +12,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	console.log('Aider Smart Context is now active.');
 
+	const sessionManager = AiderSessionManager.getInstance();
+
 	let startCommand = vscode.commands.registerCommand('aider.start', () => {
-		AiderSessionManager.getInstance().startSession();
+		sessionManager.startSession();
 	});
 
-	const sessionManager = AiderSessionManager.getInstance();
 	const aiderContextViewProvider = new AiderContextViewProvider();
 	sessionManager.setViewProvider(aiderContextViewProvider);
 
@@ -25,36 +26,36 @@ export function activate(context: vscode.ExtensionContext) {
 		aiderContextViewProvider
 	);
 
-	const onOpenFile = vscode.workspace.onDidOpenTextDocument((document: vscode.TextDocument) => {
-		if (document.isUntitled || document.uri.scheme !== 'file') {
-			return;
-		}
+	// const onOpenFile = vscode.workspace.onDidOpenTextDocument((document: vscode.TextDocument) => {
+	// 	if (document.isUntitled || document.uri.scheme !== 'file') {
+	// 		return;
+	// 	}
 
-		// Confirm the document is actually visible to the user.
-		// This prevents adding files that VS Code or other extensions open in the background.
-		const isDocumentVisible = vscode.window.visibleTextEditors.some(
-			(editor) => editor.document.uri.toString() === document.uri.toString()
-		);
+	// 	// Confirm the document is actually visible to the user.
+	// 	// This prevents adding files that VS Code or other extensions open in the background.
+	// 	const isDocumentVisible = vscode.window.visibleTextEditors.some(
+	// 		(editor) => editor.document.uri.toString() === document.uri.toString()
+	// 	);
 
-		if (!isDocumentVisible) {
-			return; // This is a background event, so we ignore it.
-		}
+	// 	if (!isDocumentVisible) {
+	// 		return; // This is a background event, so we ignore it.
+	// 	}
 
-		const config = vscode.workspace.getConfiguration('aider');
-		if (config.get<boolean>('autoAddOnOpen')) {
-			sessionManager.addFile(document.uri.fsPath);
-		}
-	});
+	// 	const config = vscode.workspace.getConfiguration('aider');
+	// 	if (config.get<boolean>('autoAddOnOpen')) {
+	// 		sessionManager.addFile(document.uri.fsPath);
+	// 	}
+	// });
 
-	const onCloseFile = vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
-		if (document.isUntitled || document.uri.scheme !== 'file') {
-			return;
-		}
-		const config = vscode.workspace.getConfiguration('aider');
-		if (config.get<boolean>('autoDropOnClose')) {
-			sessionManager.dropFile(document.uri.fsPath);
-		}
-	});
+	// const onCloseFile = vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
+	// 	if (document.isUntitled || document.uri.scheme !== 'file') {
+	// 		return;
+	// 	}
+	// 	const config = vscode.workspace.getConfiguration('aider');
+	// 	if (config.get<boolean>('autoDropOnClose')) {
+	// 		sessionManager.dropFile(document.uri.fsPath);
+	// 	}
+	// });
 
 	let listFilesCommand = vscode.commands.registerCommand('aider.listFiles', () => {
 		sessionManager.listFiles();
@@ -144,19 +145,23 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	let addExplorerReadOnly = vscode.commands.registerCommand('aider.addFileAsReadOnlyFromExplorer', (uri: vscode.Uri) => {
-		if (uri && uri.fsPath) {
-			sessionManager.addFiles([uri.fsPath], { readOnly: true });
+	let addExplorerReadOnly = vscode.commands.registerCommand('aider.addFileAsReadOnlyFromExplorer', (uri: vscode.Uri, uris: vscode.Uri[]) => {
+		const urisToProcess = uris || [uri];
+		const filePaths = urisToProcess.map(u => u.fsPath).filter(p => p);
+		if (filePaths.length > 0) {
+			sessionManager.addFiles(filePaths, { readOnly: true });
 		}
 	});
 
-	let addExplorerFile = vscode.commands.registerCommand('aider.addFileFromExplorer', (uri: vscode.Uri) => {
-		if (uri && uri.fsPath) {
-			sessionManager.addFiles([uri.fsPath], { readOnly: false });
+	let addExplorerFile = vscode.commands.registerCommand('aider.addFileFromExplorer', (uri: vscode.Uri, uris: vscode.Uri[]) => {
+		const urisToProcess = uris || [uri]; // Use the array if it exists, otherwise use the single URI
+		const filePaths = urisToProcess.map(u => u.fsPath).filter(p => p);
+		if (filePaths.length > 0) {
+			sessionManager.addFiles(filePaths, { readOnly: false });
 		}
 	});
 
-	context.subscriptions.push(startCommand, onOpenFile, onCloseFile, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile);
+	context.subscriptions.push(startCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile);
 }
 
 
