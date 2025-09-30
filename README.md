@@ -1,71 +1,74 @@
-# aider-smart-context README
+# Aider Smart Context for VS Code
 
-This is the README for your extension "aider-smart-context". After writing up a brief description, we recommend including the following sections.
+**Seamlessly manage your `aider` chat context directly within VS Code, with intelligent automation and a dedicated UI.**
 
-## Features
+Stop manually typing `/add` and `/drop`. This extension turns `aider` into a fully integrated part of your VS Code workflow, letting you focus on coding with your AI pair programmer, not managing its context.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
-For example if there is an image subfolder under your extension project workspace:
+## \#\# Features
 
-\!\[feature X\]\(images/feature-x.png\)
+✨ **Automatic Context Management**: Files are automatically added to the `aider` chat when you open them and removed when you close them. (Configurable)
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+🧠 **Dedicated Context View**: A new Aider icon in the Activity Bar opens a dedicated view showing you exactly which files are in the context at all times.
 
-## Requirements
+🗑️ **Inline Actions**: Instantly remove a file from the context by clicking the `(x)` icon next to it in the Aider Context View.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+📂 **Explorer Integration**: Right-click on any file or folder in the VS Code Explorer to add it to the context.
 
-## Extension Settings
+  * **Add to Context**: Adds the selected file(s).
+  * **Add as Read-Only**: Adds the selected file(s) and tells `aider` not to edit them.
+  * **Add Directory**: Recursively adds all files in a directory, intelligently respecting your `.gitignore` rules.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+⚙️ **Session Management**: Start and stop your `aider` session from the Command Palette, all within a dedicated, integrated VS Code terminal.
 
-For example:
+-----
 
-This extension contributes the following settings:
+## \#\# Requirements
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+You must have the `aider-chat` command-line tool installed and available in your system's PATH.
 
-## Known Issues
+You can install it via pip:
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+```bash
+pip install aider-chat
+```
 
-## Release Notes
+-----
 
-Users appreciate release notes as you update your extension.
+## \#\# Usage
 
-### 1.0.0
+1.  Click the new **Aider icon** in your Activity Bar, or run the **`Aider: Start Session`** command from the Command Palette (`Ctrl+Shift+P`).
+2.  An integrated terminal will open and start an `aider` session.
+3.  As you open and close files, they will be automatically added or dropped from the context.
+4.  Use the **Aider Context View** in the sidebar to monitor and manage the context manually.
+5.  Right-click files in the **File Explorer** for more granular control.
 
-Initial release of ...
+### \#\# Commands
 
-### 1.0.1
+  * `Aider: Start Session` - Starts the main `aider` session.
+  * `Aider: Add All Files in Directory...` - Opens a dialog to select a directory to add.
+  * `Aider: Add Active File as Read-Only` - Adds the currently focused file as read-only.
+  * `Aider: Drop All Files` - Clears the `aider` context.
 
-Fixed issue #.
+-----
 
-### 1.1.0
+## \#\# Extension Settings
 
-Added features X, Y, and Z.
+This extension contributes the following settings to your `settings.json`:
 
----
+  * `aider.executablePath`: The absolute path to the `aider` executable (defaults to `"aider"`).
+  * `aider.autoAddOnOpen`: (`true`/`false`) Automatically add files to the context when they are opened.
+  * `aider.autoDropOnClose`: (`true`/`false`) Automatically drop files from the context when they are closed.
 
-## Following extension guidelines
+-----
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+## \#\# Known Issues
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+  * Multi-root workspaces are not yet fully supported. The extension will bind to the first workspace folder.
 
-## Working with Markdown
+Please report any other issues on the [GitHub Issues page](https://github.com/Conflate-AI/Aider-Smart-Context-Vscode-Ext/issues).
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+-----
 
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Enjoy a more productive AI coding experience\!**
