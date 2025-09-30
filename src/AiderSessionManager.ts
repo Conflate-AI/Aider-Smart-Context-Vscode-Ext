@@ -1,5 +1,7 @@
 // src/AiderSessionManager.ts
 import * as vscode from 'vscode';
+import * as path from 'path';
+import ignore from 'ignore';
 import { AiderContextViewProvider } from './AiderContextViewProvider';
 
 export class AiderSessionManager {
@@ -9,6 +11,8 @@ export class AiderSessionManager {
     private _statusBarItem: vscode.StatusBarItem;
     private _viewProvider: AiderContextViewProvider | undefined;
     private _sessionDisposables: vscode.Disposable[] = [];
+    private _ignorer = ignore();
+    private _workspaceFolder: vscode.WorkspaceFolder | undefined;
 
     private constructor() {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -44,11 +48,41 @@ export class AiderSessionManager {
         this._statusBarItem.show();
     }
 
+    private async loadIgnoreRules() {
+        if (!this._workspaceFolder) return;
+
+        this._ignorer = ignore(); // Reset the ignorer
+        try {
+            const gitignoreUri = vscode.Uri.joinPath(this._workspaceFolder.uri, '.gitignore');
+            const gitignoreContent = await vscode.workspace.fs.readFile(gitignoreUri);
+            this._ignorer.add(Buffer.from(gitignoreContent).toString('utf8'));
+        } catch (e) {
+            console.log("Aider: No .gitignore found in workspace root or failed to read it.");
+        }
+    }
+
+    private isIgnored(filePath: string): boolean {
+        if (!this._workspaceFolder) return false;
+
+        const relativePath = path.relative(this._workspaceFolder.uri.fsPath, filePath);
+        // An empty relative path means it's the root folder itself, which can't be ignored.
+        if (relativePath === '') return false;
+
+        return this._ignorer.ignores(relativePath);
+    }
+
     public startSession() {
         if (this._terminal) {
             this._terminal.show();
             return;
         }
+
+        this._workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
+        if (!this._workspaceFolder) {
+            vscode.window.showErrorMessage("Aider Smart Context requires an open folder to function correctly.");
+            return;
+        }
+        this.loadIgnoreRules();
 
         const config = vscode.workspace.getConfiguration('aider');
         const executablePath = config.get<string>('executablePath', 'aider');
@@ -135,8 +169,18 @@ export class AiderSessionManager {
             return;
         }
 
+        const unignoredFilePaths = filePaths.filter(p => !this.isIgnored(p));
+
+        if (unignoredFilePaths.length === 0) {
+            // If all files were ignored, let the user know.
+            if (filePaths.length > 0) {
+                console.log(`Aider: All ${filePaths.length} file(s) are ignored by .gitignore.`);
+            }
+            return;
+        }
+
         const readOnly = !!options?.readOnly;
-        const newFiles = filePaths.filter(p => !this._contextFiles.has(p));
+        const newFiles = unignoredFilePaths.filter(p => !this._contextFiles.has(p));
 
         if (newFiles.length === 0) return;
 
@@ -150,6 +194,7 @@ export class AiderSessionManager {
         if (this._viewProvider) {
             this._viewProvider.refresh();
         }
+        this.updateStatusBar();
     }
 
     public dropFile(filePath: string) {
@@ -162,6 +207,7 @@ export class AiderSessionManager {
         if (this._viewProvider) {
             this._viewProvider.refresh();
         }
+        this.updateStatusBar();
     }
 
     public listFiles() {
