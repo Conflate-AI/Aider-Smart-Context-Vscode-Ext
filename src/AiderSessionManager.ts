@@ -1,4 +1,5 @@
 // src/AiderSessionManager.ts
+
 import * as vscode from 'vscode';
 import * as path from 'path';
 import ignore from 'ignore';
@@ -13,17 +14,34 @@ export class AiderSessionManager {
     private _sessionDisposables: vscode.Disposable[] = [];
     private _ignorer = ignore();
     private _workspaceFolder: vscode.WorkspaceFolder | undefined;
+    private _isStarting = false;
+    private _isContextDirty = false; // Add a dirty flag
 
     private constructor() {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
 
-        // Listen for the terminal being closed by the user
         vscode.window.onDidCloseTerminal(closedTerminal => {
             if (closedTerminal === this._terminal) {
-                this.endSession(); // Call a dedicated cleanup method
+                this.endSession();
             }
         });
         this.updateStatusBar();
+    }
+
+    private setContextDirty(isDirty: boolean) {
+        if (this._isContextDirty === isDirty) return;
+        this._isContextDirty = isDirty;
+        vscode.commands.executeCommand('setContext', 'aider.contextIsDirty', isDirty);
+        this.updateStatusBar();
+    }
+
+    // ... getInstance, setViewProvider, getContextFiles ... (no changes here)
+
+    public static getInstance(): AiderSessionManager {
+        if (!AiderSessionManager._instance) {
+            AiderSessionManager._instance = new AiderSessionManager();
+        }
+        return AiderSessionManager._instance;
     }
 
     public setViewProvider(provider: AiderContextViewProvider) {
@@ -34,26 +52,25 @@ export class AiderSessionManager {
         return this._contextFiles;
     }
 
-    public static getInstance(): AiderSessionManager {
-        if (!AiderSessionManager._instance) {
-            AiderSessionManager._instance = new AiderSessionManager();
-        }
-        return AiderSessionManager._instance;
-    }
-
     private updateStatusBar() {
         const fileCount = this._contextFiles.size;
         if (!this._terminal) {
             this._statusBarItem.text = `$(terminal) Aider: Inactive`;
             this._statusBarItem.tooltip = 'Click to start an Aider session';
-            this._statusBarItem.command = 'aider.start'; // Make it clickable!
+            this._statusBarItem.command = 'aider.start';
         } else {
-            this._statusBarItem.text = `$(terminal-flame) Aider: ${fileCount} files`;
+            let text = `$(terminal-flame) Aider: ${fileCount} files`;
+            if (this._isContextDirty) {
+                text += ' (unsynced)'; // Indicate unsynced state
+            }
+            this._statusBarItem.text = text;
             this._statusBarItem.tooltip = 'Aider session is active. Click the Stop icon in the sidebar to end.';
             this._statusBarItem.command = 'workbench.action.terminal.focus';
         }
         this._statusBarItem.show();
     }
+
+    // ... loadIgnoreRules, isIgnored ... (no changes here)
 
     private async loadIgnoreRules() {
         if (!this._workspaceFolder) return;
@@ -70,11 +87,8 @@ export class AiderSessionManager {
 
     private isIgnored(filePath: string): boolean {
         if (!this._workspaceFolder) return false;
-
         const relativePath = path.relative(this._workspaceFolder.uri.fsPath, filePath);
-        // An empty relative path means it's the root folder itself, which can't be ignored.
         if (relativePath === '') return false;
-
         return this._ignorer.ignores(relativePath);
     }
 
@@ -98,7 +112,6 @@ export class AiderSessionManager {
         this._terminal = vscode.window.createTerminal(`Aider`);
         this._terminal.sendText(executablePath);
         this._terminal.show();
-        this.updateStatusBar();
 
         this.registerSessionListeners();
 
@@ -108,45 +121,78 @@ export class AiderSessionManager {
                 .map(doc => doc.uri.fsPath);
 
             if (openFiles.length > 0) {
-                this.addFiles(openFiles);
+                this.addFiles(openFiles, { silent: true }); // Use a silent add
             }
         }
+        this.syncContext(); // Perform an initial sync on start
+        this.updateStatusBar();
     }
 
+    // ... stopSession ... (no changes here)
     public stopSession() {
         if (this._terminal) {
-            // This programmatically kills the terminal.
-            // This action WILL trigger the onDidCloseTerminal event listener.
             this._terminal.dispose();
         }
     }
 
     private registerSessionListeners() {
-        // Listener for opening files
         const onDidChangeActiveEditor = vscode.window.onDidChangeActiveTextEditor(editor => {
-            // This event fires with `undefined` when you focus away from an editor
-            if (editor) {
-                const document = editor.document;
-                if (document.isUntitled || document.uri.scheme !== 'file' || !this._terminal) return;
+            if (this._isStarting || !editor) return;
 
-                // Now that we're using a more direct event, we don't need the complex 'isDocumentVisible' check.
-                const config = vscode.workspace.getConfiguration('aider');
-                if (config.get<boolean>('autoAddOnOpen')) {
-                    this.addFile(document.uri.fsPath);
-                }
+            const document = editor.document;
+            if (document.isUntitled || document.uri.scheme !== 'file') return;
+
+            const config = vscode.workspace.getConfiguration('aider');
+            if (config.get<boolean>('autoAddOnOpen') && !this._contextFiles.has(document.uri.fsPath)) {
+                // Just update the internal list and mark as dirty
+                this._contextFiles.set(document.uri.fsPath, { readOnly: false });
+                this.setContextDirty(true);
+                this._viewProvider?.refresh();
             }
         });
 
-        // Listener for closing files
         const onCloseFile = vscode.workspace.onDidCloseTextDocument((document: vscode.TextDocument) => {
-            if (document.isUntitled || document.uri.scheme !== 'file' || !this._terminal) return;
+            if (document.isUntitled || document.uri.scheme !== 'file' || !this._contextFiles.has(document.uri.fsPath)) return;
+
             const config = vscode.workspace.getConfiguration('aider');
             if (config.get<boolean>('autoDropOnClose')) {
-                this.dropFile(document.uri.fsPath);
+                // Just update the internal list and mark as dirty
+                this._contextFiles.delete(document.uri.fsPath);
+                this.setContextDirty(true);
+                this._viewProvider?.refresh();
             }
         });
 
         this._sessionDisposables.push(onDidChangeActiveEditor, onCloseFile);
+    }
+
+    public syncContext() {
+        if (!this._terminal) {
+            vscode.window.showWarningMessage("Aider session not active.");
+            return;
+        }
+
+        // 1. Clear the context in the Aider terminal.
+        this._terminal.sendText('/drop *');
+
+        const files = Array.from(this._contextFiles.keys());
+        const readOnlyFiles = Array.from(this._contextFiles.entries())
+            .filter(([, status]) => status.readOnly)
+            .map(([path]) => path);
+        const normalFiles = files.filter(f => !readOnlyFiles.includes(f));
+
+        // 2. Add back the files from our virtual context.
+        if (normalFiles.length > 0) {
+            const quotedPaths = normalFiles.map(p => `"${p}"`).join(' ');
+            this._terminal.sendText(`/add ${quotedPaths}`);
+        }
+        if (readOnlyFiles.length > 0) {
+            const quotedPaths = readOnlyFiles.map(p => `"${p}"`).join(' ');
+            this._terminal.sendText(`/read ${quotedPaths}`);
+        }
+
+        this.setContextDirty(false); // Mark context as clean
+        vscode.window.setStatusBarMessage('Aider context synced.', 3000);
     }
 
     private endSession() {
@@ -155,89 +201,65 @@ export class AiderSessionManager {
         this._contextFiles.clear();
 
         vscode.commands.executeCommand('setContext', 'aider.sessionActive', false);
+        this.setContextDirty(false); // Reset dirty flag
 
-        // --- NEW: Dispose of listeners to prevent memory leaks ---
         this._sessionDisposables.forEach(d => d.dispose());
         this._sessionDisposables = [];
 
         this.updateStatusBar();
-        if (this._viewProvider) {
-            this._viewProvider.refresh();
-        }
+        this._viewProvider?.refresh();
     }
 
-    public addFile(filePath: string) {
-        if (!this._terminal || this._contextFiles.has(filePath)) {
-            return; // Don't add if session isn't running or file is already there
-        }
-        this.addFiles([filePath]);
-    }
-
-    /**
- * Adds multiple files to the Aider context in a single command.
- */
-    public addFiles(filePaths: string[], options?: { readOnly?: boolean }) {
-        if (!this._terminal || filePaths.length === 0) {
-            return;
-        }
+    public addFiles(filePaths: string[], options?: { readOnly?: boolean; silent?: boolean }) {
+        if (!this._terminal || filePaths.length === 0) return;
 
         const unignoredFilePaths = filePaths.filter(p => !this.isIgnored(p));
-
-        if (unignoredFilePaths.length === 0) {
-            // If all files were ignored, let the user know.
-            if (filePaths.length > 0) {
-                console.log(`Aider: All ${filePaths.length} file(s) are ignored by .gitignore.`);
-            }
-            return;
-        }
+        if (unignoredFilePaths.length === 0) return;
 
         const readOnly = !!options?.readOnly;
-        const newFiles = unignoredFilePaths.filter(p => !this._contextFiles.has(p));
+        let changed = false;
 
-        if (newFiles.length === 0) return;
+        unignoredFilePaths.forEach(p => {
+            if (!this._contextFiles.has(p) || this._contextFiles.get(p)?.readOnly !== readOnly) {
+                this._contextFiles.set(p, { readOnly });
+                changed = true;
+            }
+        });
 
-        const quotedPaths = newFiles.map(p => `"${p}"`).join(' ');
-        const command = readOnly ? `/read ${quotedPaths}` : `/add ${quotedPaths}`;
-
-        this._terminal.sendText(command);
-
-        newFiles.forEach(p => this._contextFiles.set(p, { readOnly: readOnly }));
-
-        if (this._viewProvider) {
-            this._viewProvider.refresh();
+        if (changed) {
+            if (!options?.silent) {
+                this.setContextDirty(true);
+            }
+            this._viewProvider?.refresh();
+            this.updateStatusBar();
         }
-        this.updateStatusBar();
     }
 
     public dropFile(filePath: string) {
-        if (!this._terminal || !this._contextFiles.has(filePath)) {
-            return;
-        }
-        this._terminal.sendText(`/drop "${filePath}"`);
-        this._contextFiles.delete(filePath); // Use .delete() for Map
+        if (!this._terminal || !this._contextFiles.has(filePath)) return;
 
-        if (this._viewProvider) {
-            this._viewProvider.refresh();
+        if (this._contextFiles.delete(filePath)) {
+            this.setContextDirty(true);
+            this._viewProvider?.refresh();
+            this.updateStatusBar();
         }
-        this.updateStatusBar();
     }
 
+    // ... listFiles ... (no change here)
     public listFiles() {
         if (!this._terminal) return;
         this._terminal.sendText('/ls');
-        this._terminal.show(); // Bring terminal to front
+        this._terminal.show();
     }
 
     public clearContext() {
         if (!this._terminal) return;
-        this._terminal.sendText('/clear');
-        this._terminal.sendText('/drop *');
-        this._contextFiles.clear();
-        if (this._viewProvider) {
-            this._viewProvider.refresh(); // Refresh the view!
+
+        if (this._contextFiles.size > 0) {
+            this._contextFiles.clear();
+            this.setContextDirty(true);
+            this._viewProvider?.refresh();
+            vscode.window.setStatusBarMessage(`All files staged to be dropped. Press Sync to apply.`, 4000);
         }
-        vscode.window.showInformationMessage('Aider context and history cleared.');
-        vscode.window.setStatusBarMessage(`Aider context and history cleared.`, 3000);
-        this.updateStatusBar();
     }
 }

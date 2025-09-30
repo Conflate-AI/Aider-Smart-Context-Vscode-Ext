@@ -56,6 +56,18 @@
           "when": "view == aider-context-view && aider.sessionActive",
           "group": "navigation@2",
           "icon": "$(clear-all)"
+        },
+        {
+          "command": "aider.syncContext",
+          "when": "view == aider-context-view && aider.sessionActive && !aider.contextIsDirty",
+          "group": "navigation@3",
+          "icon": "$(sync)"
+        },
+        {
+          "command": "aider.syncContext",
+          "when": "view == aider-context-view && aider.sessionActive && aider.contextIsDirty",
+          "group": "navigation@3",
+          "icon": "$(sync-ignored)"
         }
       ],
       "view/item/context": [
@@ -119,6 +131,11 @@
       {
         "command": "aider.addFileAsReadOnlyFromExplorer",
         "title": "Aider: Add as Read-Only"
+      },
+      {
+        "command": "aider.syncContext",
+        "title": "Aider: Sync Context",
+        "icon": "$(sync)"
       }
     ],
     "configuration": {

@@ -165,7 +165,11 @@ export function activate(context: vscode.ExtensionContext) {
 		sessionManager.stopSession();
 	});
 
-	context.subscriptions.push(startCommand, stopCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile);
+	let syncContextCommand = vscode.commands.registerCommand('aider.syncContext', () => {
+		sessionManager.syncContext();
+	});
+
+	context.subscriptions.push(startCommand, stopCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile, syncContextCommand);
 }
 
 
