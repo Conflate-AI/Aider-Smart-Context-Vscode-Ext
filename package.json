@@ -1,0 +1,140 @@
+{
+  "name": "aider-smart-context",
+  "displayName": "Aider Smart Context",
+  "description": "Integrates Aider by automatically managing the chat context based on open and closed files.",
+  "publisher": "Conflate-AI",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Conflate-AI/Aider-Smart-Context-Vscode-Ext"
+  },
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:aider.start",
+    "onView:aider-context-view"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aider-view-container",
+          "title": "Aider",
+          "icon": "resources/asc_logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "aider-view-container": [
+        {
+          "id": "aider-context-view",
+          "name": "Chat Context",
+          "contextualTitle": "Aider"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "aider.dropFileFromContext",
+          "when": "view == aider-context-view",
+          "group": "inline"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aider.addFileAsReadOnlyFromExplorer",
+          "when": "resourceScheme == file",
+          "group": "2_aider@1"
+        },
+        {
+          "command": "aider.addFileFromExplorer",
+          "when": "resourceScheme == file",
+          "group": "2_aider@2"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aider.start",
+        "title": "Aider: Start Session",
+        "category": "Aider"
+      },
+      {
+        "command": "aider.listFiles",
+        "title": "Aider: List Monitored Files",
+        "category": "Aider"
+      },
+      {
+        "command": "aider.dropAllFiles",
+        "title": "Aider: Drop All Files",
+        "category": "Aider"
+      },
+      {
+        "command": "aider.addAllFromDirectory",
+        "title": "Aider: Add All Files in Directory...",
+        "category": "Aider"
+      },
+      {
+        "command": "aider.dropFileFromContext",
+        "title": "Aider: Drop File from Context",
+        "category": "Aider"
+      },
+      {
+        "command": "aider.addFileFromExplorer",
+        "title": "Aider: Add to Context"
+      },
+      {
+        "command": "aider.addFileAsReadOnlyFromExplorer",
+        "title": "Aider: Add as Read-Only"
+      }
+    ],
+    "configuration": {
+      "title": "Aider Smart Context",
+      "properties": {
+        "aider.executablePath": {
+          "type": "string",
+          "default": "aider",
+          "description": "The absolute path to the 'aider' executable."
+        },
+        "aider.autoAddOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically add files to the Aider context when they are opened."
+        },
+        "aider.autoDropOnClose": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically drop files from the Aider context when they are closed."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.104.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "ignore": "^7.0.5"
+  }
+}
