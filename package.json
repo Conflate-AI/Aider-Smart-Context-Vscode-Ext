@@ -3,7 +3,7 @@
   "displayName": "Aider Smart Context",
   "description": "Integrates Aider by automatically managing the chat context based on open and closed files.",
   "publisher": "Conflate-AI",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "license": "MIT",
   "icon": "resources/asc_logo.png",
   "repository": {
