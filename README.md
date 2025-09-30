@@ -5,7 +5,7 @@
 Stop manually typing `/add` and `/drop`. This extension turns `aider` into a fully integrated part of your VS Code workflow, letting you focus on coding with your AI pair programmer, not managing its context.
 
 
-## \#\# Features
+## Features
 
 ✨ **Automatic Context Management**: Files are automatically added to the `aider` chat when you open them and removed when you close them. (Configurable)
 
@@ -23,7 +23,7 @@ Stop manually typing `/add` and `/drop`. This extension turns `aider` into a ful
 
 -----
 
-## \#\# Requirements
+## Requirements
 
 You must have the `aider-chat` command-line tool installed and available in your system's PATH.
 
@@ -35,7 +35,7 @@ pip install aider-chat
 
 -----
 
-## \#\# Usage
+## Usage
 
 1.  Click the new **Aider icon** in your Activity Bar, or run the **`Aider: Start Session`** command from the Command Palette (`Ctrl+Shift+P`).
 2.  An integrated terminal will open and start an `aider` session.
@@ -43,7 +43,7 @@ pip install aider-chat
 4.  Use the **Aider Context View** in the sidebar to monitor and manage the context manually.
 5.  Right-click files in the **File Explorer** for more granular control.
 
-### \#\# Commands
+### Commands
 
   * `Aider: Start Session` - Starts the main `aider` session.
   * `Aider: Add All Files in Directory...` - Opens a dialog to select a directory to add.
@@ -52,7 +52,7 @@ pip install aider-chat
 
 -----
 
-## \#\# Extension Settings
+## Extension Settings
 
 This extension contributes the following settings to your `settings.json`:
 
@@ -62,7 +62,7 @@ This extension contributes the following settings to your `settings.json`:
 
 -----
 
-## \#\# Known Issues
+## Known Issues
 
   * Multi-root workspaces are not yet fully supported. The extension will bind to the first workspace folder.
 
