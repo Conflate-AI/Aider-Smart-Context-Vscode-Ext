@@ -60,6 +60,8 @@ This extension contributes the following settings to your `settings.json`:
   * `aider.autoAddOnOpen`: (`true`/`false`) Automatically add files to the context when they are opened.
   * `aider.autoDropOnClose`: (`true`/`false`) Automatically drop files from the context when they are closed.
 
+  **Important**: To end a session, always use the **Stop icon** in the Aider sidebar or run the `Aider: Stop Session` command. Do not type `/exit` in the terminal, as this will leave the extension in an inconsistent state.
+
 -----
 
 ## Known Issues

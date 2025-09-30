@@ -3,7 +3,7 @@
   "displayName": "Aider Smart Context",
   "description": "Integrates Aider by automatically managing the chat context based on open and closed files.",
   "publisher": "Conflate-AI",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
   "icon": "resources/asc_logo.png",
   "repository": {
@@ -40,9 +40,21 @@
     "menus": {
       "view/title": [
         {
-          "command": "aider.dropAllFiles",
-          "when": "view == aider-context-view",
+          "command": "aider.start",
+          "when": "view == aider-context-view && !aider.sessionActive",
           "group": "navigation",
+          "icon": "$(play-circle)"
+        },
+        {
+          "command": "aider.stop",
+          "when": "view == aider-context-view && aider.sessionActive",
+          "group": "navigation@1",
+          "icon": "$(debug-stop)"
+        },
+        {
+          "command": "aider.dropAllFiles",
+          "when": "view == aider-context-view && aider.sessionActive",
+          "group": "navigation@2",
           "icon": "$(clear-all)"
         }
       ],
@@ -68,9 +80,16 @@
     },
     "commands": [
       {
+        "command": "aider.stop",
+        "title": "Aider: Stop Session",
+        "category": "Aider",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "aider.start",
         "title": "Aider: Start Session",
-        "category": "Aider"
+        "category": "Aider",
+        "icon": "$(play-circle)"
       },
       {
         "command": "aider.listFiles",
@@ -80,7 +99,8 @@
       {
         "command": "aider.dropAllFiles",
         "title": "Aider: Drop All Files",
-        "category": "Aider"
+        "category": "Aider",
+        "icon": "$(clear-all)"
       },
       {
         "command": "aider.addAllFromDirectory",

@@ -16,6 +16,13 @@ export class AiderSessionManager {
 
     private constructor() {
         this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+
+        // Listen for the terminal being closed by the user
+        vscode.window.onDidCloseTerminal(closedTerminal => {
+            if (closedTerminal === this._terminal) {
+                this.endSession(); // Call a dedicated cleanup method
+            }
+        });
         this.updateStatusBar();
     }
 
@@ -42,7 +49,7 @@ export class AiderSessionManager {
             this._statusBarItem.command = 'aider.start'; // Make it clickable!
         } else {
             this._statusBarItem.text = `$(terminal-flame) Aider: ${fileCount} files`;
-            this._statusBarItem.tooltip = 'Aider session is active. Click to view terminal.';
+            this._statusBarItem.tooltip = 'Aider session is active. Click the Stop icon in the sidebar to end.';
             this._statusBarItem.command = 'workbench.action.terminal.focus';
         }
         this._statusBarItem.show();
@@ -77,6 +84,8 @@ export class AiderSessionManager {
             return;
         }
 
+        vscode.commands.executeCommand('setContext', 'aider.sessionActive', true);
+
         this._workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
         if (!this._workspaceFolder) {
             vscode.window.showErrorMessage("Aider Smart Context requires an open folder to function correctly.");
@@ -93,13 +102,6 @@ export class AiderSessionManager {
 
         this.registerSessionListeners();
 
-        // Listen for the terminal being closed by the user
-        vscode.window.onDidCloseTerminal(closedTerminal => {
-            if (closedTerminal === this._terminal) {
-                this.endSession(); // Call a dedicated cleanup method
-            }
-        });
-
         if (config.get<boolean>('autoAddOnOpen')) {
             const openFiles = vscode.workspace.textDocuments
                 .filter(doc => !doc.isUntitled && doc.uri.scheme === 'file')
@@ -108,6 +110,14 @@ export class AiderSessionManager {
             if (openFiles.length > 0) {
                 this.addFiles(openFiles);
             }
+        }
+    }
+
+    public stopSession() {
+        if (this._terminal) {
+            // This programmatically kills the terminal.
+            // This action WILL trigger the onDidCloseTerminal event listener.
+            this._terminal.dispose();
         }
     }
 
@@ -143,6 +153,8 @@ export class AiderSessionManager {
         vscode.window.showInformationMessage('Aider session terminated.');
         this._terminal = undefined;
         this._contextFiles.clear();
+
+        vscode.commands.executeCommand('setContext', 'aider.sessionActive', false);
 
         // --- NEW: Dispose of listeners to prevent memory leaks ---
         this._sessionDisposables.forEach(d => d.dispose());

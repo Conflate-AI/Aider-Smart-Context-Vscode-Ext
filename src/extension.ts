@@ -161,7 +161,11 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(startCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile);
+	let stopCommand = vscode.commands.registerCommand('aider.stop', () => {
+		sessionManager.stopSession();
+	});
+
+	context.subscriptions.push(startCommand, stopCommand, listFilesCommand, dropFileCommand, dropAllFilesCommand, addFromDirCommand, addActiveReadOnly, addExplorerReadOnly, addExplorerFile);
 }
 
 
