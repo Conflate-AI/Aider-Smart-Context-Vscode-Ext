@@ -4,6 +4,7 @@
   "description": "Integrates Aider by automatically managing the chat context based on open and closed files.",
   "publisher": "Conflate-AI",
   "version": "0.0.1",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Conflate-AI/Aider-Smart-Context-Vscode-Ext"
